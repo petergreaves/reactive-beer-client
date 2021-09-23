@@ -1,6 +1,7 @@
 package com.springfirst.learning.reactive.webclient.services;
 
 import com.springfirst.learning.reactive.webclient.config.WebClientConfig;
+import com.springfirst.learning.reactive.webclient.domain.Beer;
 import com.springfirst.learning.reactive.webclient.domain.BeerPagedList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,8 +27,8 @@ public class BeerClientServiceImplTest {
     public void getBeers() throws Exception {
 
         Mono<BeerPagedList> beerPagedListMono =
-                beerClientService.getBeers(null, null, null, null,null);
-        BeerPagedList  beerPagedList = beerPagedListMono.block();
+                beerClientService.getBeers(null, null, null, null, null);
+        BeerPagedList beerPagedList = beerPagedListMono.block();
         assertThat(beerPagedList).isNotNull();
         //System.out.println(beerPagedList.getContent().size());
         assertThat(beerPagedList.getContent().size()).isGreaterThan(0);
@@ -37,8 +38,8 @@ public class BeerClientServiceImplTest {
     public void getBeersPageSize10() throws Exception {
 
         Mono<BeerPagedList> beerPagedListMono =
-                beerClientService.getBeers(1, 10, null, null,null);
-        BeerPagedList  beerPagedList = beerPagedListMono.block();
+                beerClientService.getBeers(1, 10, null, null, null);
+        BeerPagedList beerPagedList = beerPagedListMono.block();
         assertThat(beerPagedList).isNotNull();
         assertThat(beerPagedList.getContent().size()).isEqualTo(10);
     }
@@ -47,23 +48,54 @@ public class BeerClientServiceImplTest {
     public void getBeersNoRecords() throws Exception {
 
         Mono<BeerPagedList> beerPagedListMono =
-                beerClientService.getBeers(2, 20, null, null,null);
-        BeerPagedList  beerPagedList = beerPagedListMono.block();
+                beerClientService.getBeers(2, 20, null, null, null);
+        BeerPagedList beerPagedList = beerPagedListMono.block();
         assertThat(beerPagedList).isNotNull();
         assertThat(beerPagedList.getContent().size()).isEqualTo(0);
     }
 
 
-
-
     @Test
-    public void getBeerById() throws Exception {
+    public void getBeerByIdNoInventory() throws Exception {
+
+        BeerPagedList beerPagedList = getSimpleList();
+        Beer firstBeer = beerPagedList.stream().findFirst().get();
+
+        Mono<Beer> testBeerFoundByID = beerClientService.getBeerById(firstBeer.getId(), false);
+        Beer b = testBeerFoundByID.block();
+
+        assertThat(b).isNotNull();
+        assertThat(b.getBeerName().equalsIgnoreCase(firstBeer.getBeerName()));
     }
 
+    @Test
+    public void getBeerByIdWithInventory() throws Exception {
+
+        BeerPagedList beerPagedList = getSimpleList();
+        Beer firstBeerWithQOHGtrThan0 = beerPagedList.stream().filter(b -> b.getQuantityOnHand()>0).findFirst().get();
+
+        Mono<Beer> testBeerFoundByID = beerClientService.getBeerById(firstBeerWithQOHGtrThan0.getId(), true);
+        Beer b = testBeerFoundByID.block();
+
+        assertThat(b).isNotNull();
+        assertThat(b.getBeerName().equalsIgnoreCase(firstBeerWithQOHGtrThan0.getBeerName()));
+        assertThat(b.getQuantityOnHand().equals(firstBeerWithQOHGtrThan0.getQuantityOnHand()));
+
+    }
 
     @Test
     public void getBeerByUPC() throws Exception {
+
+        BeerPagedList beerPagedList = getSimpleList();
+        Beer firstBeer = beerPagedList.stream().findFirst().get();
+
+        Mono<Beer> testBeerFoundByUPC = beerClientService.getBeerByUPC(firstBeer.getUpc());
+        Beer b = testBeerFoundByUPC.block();
+
+        assertThat(b).isNotNull();
+        assertThat(b.getBeerName().equalsIgnoreCase(firstBeer.getBeerName()));
     }
+
 
     @Test
     public void createBeer() throws Exception {
@@ -76,4 +108,10 @@ public class BeerClientServiceImplTest {
     @Test
     public void deleteBeer() throws Exception {
     }
+
+    private BeerPagedList getSimpleList() {
+        return beerClientService.getBeers(null, null, null, null, null).block();
+    }
+
+
 }
