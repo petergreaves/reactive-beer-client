@@ -155,11 +155,9 @@ public class BeerClientServiceImplTest {
     @Test
     public void deleteBeerNotFound() throws Exception {
 
-        BeerPagedList beerPagedList = getSimpleList();
-        Beer toDelete = beerPagedList.stream().findFirst().get();
+        Mono<ResponseEntity<Void>> responseEntityMono = beerClientService.deleteBeer(UUID.randomUUID());
 
         Assertions.assertThatThrownBy(() -> {
-            Mono<ResponseEntity<Void>> responseEntityMono = beerClientService.deleteBeer(UUID.randomUUID());
             ResponseEntity<Void> responseEntity = responseEntityMono.block();
         }).isInstanceOf(org.springframework.web.reactive.function.client.WebClientResponseException.class);
 
