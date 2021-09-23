@@ -3,10 +3,17 @@ package com.springfirst.learning.reactive.webclient.services;
 import com.springfirst.learning.reactive.webclient.config.WebClientConfig;
 import com.springfirst.learning.reactive.webclient.domain.Beer;
 import com.springfirst.learning.reactive.webclient.domain.BeerPagedList;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
+import java.net.URI;
+import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -99,15 +106,65 @@ public class BeerClientServiceImplTest {
 
     @Test
     public void createBeer() throws Exception {
+
+        Beer beer = Beer.builder()
+                .beerName("Old Smokey")
+                .upc("2342342342")
+                .beerStyle("IPA")
+                .price(new BigDecimal(10.99))
+                .build();
+
+        ResponseEntity created = beerClientService.createBeer(beer).block();
+
+        URI location =created.getHeaders().getLocation();
+        assertThat(location).isNotNull();
+        assertThat(created).isNotNull();
+        assertThat(created.getStatusCode().equals(HttpStatus.CREATED));
     }
 
     @Test
     public void updateBeer() throws Exception {
+
+        BeerPagedList beerPagedList = getSimpleList();
+        Beer toUpdate = beerPagedList.stream().findFirst().get();
+
+        Beer updated = Beer.builder()
+                .beerName("Old Smokey 2")
+                .upc(toUpdate.getUpc())
+                .beerStyle(toUpdate.getBeerStyle())
+                .price(toUpdate.getPrice())
+                .build();
+
+        ResponseEntity<Void> responseEntityMono =beerClientService.updateBeer(toUpdate.getId(), updated).block();
+
+        assertThat(responseEntityMono.getStatusCode().equals(HttpStatus.NO_CONTENT));
     }
 
     @Test
     public void deleteBeer() throws Exception {
+
+        BeerPagedList beerPagedList = getSimpleList();
+        Beer toDelete = beerPagedList.stream().findFirst().get();
+
+        Mono<ResponseEntity<Void>> responseEntityMono = beerClientService.deleteBeer(toDelete.getId());
+        ResponseEntity<Void> responseEntity = responseEntityMono.block();
+
+        assertThat(responseEntity.getStatusCode().equals(HttpStatus.NO_CONTENT));
     }
+
+    @Test
+    public void deleteBeerNotFound() throws Exception {
+
+        BeerPagedList beerPagedList = getSimpleList();
+        Beer toDelete = beerPagedList.stream().findFirst().get();
+
+        Assertions.assertThatThrownBy(() -> {
+            Mono<ResponseEntity<Void>> responseEntityMono = beerClientService.deleteBeer(UUID.randomUUID());
+            ResponseEntity<Void> responseEntity = responseEntityMono.block();
+        }).isInstanceOf(org.springframework.web.reactive.function.client.WebClientResponseException.class);
+
+    }
+
 
     private BeerPagedList getSimpleList() {
         return beerClientService.getBeers(null, null, null, null, null).block();
