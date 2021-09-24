@@ -13,7 +13,12 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -79,7 +84,7 @@ public class BeerClientServiceImplTest {
     public void getBeerByIdWithInventory() throws Exception {
 
         BeerPagedList beerPagedList = getSimpleList();
-        Beer firstBeerWithQOHGtrThan0 = beerPagedList.stream().filter(b -> b.getQuantityOnHand()>0).findFirst().get();
+        Beer firstBeerWithQOHGtrThan0 = beerPagedList.stream().filter(b -> b.getQuantityOnHand() > 0).findFirst().get();
 
         Mono<Beer> testBeerFoundByID = beerClientService.getBeerById(firstBeerWithQOHGtrThan0.getId(), true);
         Beer b = testBeerFoundByID.block();
@@ -116,7 +121,7 @@ public class BeerClientServiceImplTest {
 
         ResponseEntity created = beerClientService.createBeer(beer).block();
 
-        URI location =created.getHeaders().getLocation();
+        URI location = created.getHeaders().getLocation();
         assertThat(location).isNotNull();
         assertThat(created).isNotNull();
         assertThat(created.getStatusCode().equals(HttpStatus.CREATED));
@@ -135,9 +140,41 @@ public class BeerClientServiceImplTest {
                 .price(toUpdate.getPrice())
                 .build();
 
-        ResponseEntity<Void> responseEntityMono =beerClientService.updateBeer(toUpdate.getId(), updated).block();
+        ResponseEntity<Void> responseEntityMono = beerClientService.updateBeer(toUpdate.getId(), updated).block();
 
         assertThat(responseEntityMono.getStatusCode().equals(HttpStatus.NO_CONTENT));
+    }
+
+
+//    @Test
+//    public void mapAndFlapMap() throws Exception {
+//
+//        String[] sArray = new String[]{"a", "b", "c", "d"};
+//        Arrays.stream(sArray)
+//                .map(s -> Mono.just(s.toUpperCase(Locale.ROOT)))
+//                .flatMap(sUpper -> sUpper);
+//    }
+
+    @Test
+    public void functionalGetByID() throws Exception {
+
+        AtomicReference<String> beerName = new AtomicReference<>();
+        CountDownLatch countDownLatch  = new CountDownLatch(1);
+
+        beerClientService.getBeers(null, null, null, null, null)
+                .map(beers -> beers.getContent().get(0).getId())
+                .map(beerID -> beerClientService.getBeerById(beerID, false))
+                .flatMap(beerMono -> beerMono)
+                .subscribe(beer -> {
+                    System.out.println(beer.getBeerName());
+                    beerName.set(beer.getBeerName());
+                    assertThat(beer.getBeerName()).isNotNull();
+                    countDownLatch.countDown();
+                });
+
+       countDownLatch.await();
+       assertThat(beerName.get()).isEqualTo("Mango Bobs");
+
     }
 
     @Test
